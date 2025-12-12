@@ -1,1 +1,0 @@
--- Initial dataset intentionally left empty. Documents and embeddings are ingested at runtime via the REST API.
