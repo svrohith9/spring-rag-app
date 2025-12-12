@@ -1,0 +1,32 @@
+### Set the base URL for local testing
+@baseUrl = http://localhost:8088
+
+### Ingest a small text snippet (multipart upload)
+POST {{baseUrl}}/api/documents
+Content-Type: multipart/form-data; boundary=BOUNDARY
+
+--BOUNDARY
+Content-Disposition: form-data; name="file"; filename="sample.txt"
+Content-Type: text/plain
+
+This is a tiny test document for ingestion.
+--BOUNDARY--
+
+### List documents
+GET {{baseUrl}}/api/documents
+
+### Get a document by ID (replace {{docId}} with an existing ID)
+@docId = REPLACE_WITH_DOCUMENT_ID
+GET {{baseUrl}}/api/documents/{{docId}}
+
+### Get chunks for a document
+GET {{baseUrl}}/api/documents/{{docId}}/chunks
+
+### RAG query (adjust question and topK)
+POST {{baseUrl}}/api/rag/query
+Content-Type: application/json
+
+{
+  "question": "What is in the test document?",
+  "topK": 3
+}
