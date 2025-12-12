@@ -18,6 +18,7 @@ public class RagProperties {
     public static class OllamaProperties {
         private String baseUrl = "http://localhost:11434";
         private String model = "llama2";
+        private String embeddingModel = "nomic-embed-text";
         private double temperature = 0.2;
         private int timeoutSeconds = 120;
     }

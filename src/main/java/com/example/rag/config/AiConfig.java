@@ -3,7 +3,7 @@ package com.example.rag.config;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2EmbeddingModel;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,7 +26,12 @@ public class AiConfig {
     }
 
     @Bean
-    public EmbeddingModel embeddingModel() {
-        return new AllMiniLmL6V2EmbeddingModel();
+    public EmbeddingModel embeddingModel(RagProperties properties) {
+        RagProperties.OllamaProperties ollama = properties.getOllama();
+        return OllamaEmbeddingModel.builder()
+                .baseUrl(ollama.getBaseUrl())
+                .modelName(ollama.getEmbeddingModel())
+                .timeout(Duration.ofSeconds(ollama.getTimeoutSeconds()))
+                .build();
     }
 }
