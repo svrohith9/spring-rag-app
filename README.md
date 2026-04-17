@@ -1,42 +1,72 @@
-# Spring RAG API
+# Spring RAG App
 
-Spring Boot 3 RAG service using LangChain4j, Ollama (chat + embeddings), and H2 for vector storage.
+A Retrieval-Augmented Generation (RAG) service built on Spring Boot 3 and LangChain4j. Ingest PDFs and text files, embed them into a local vector store, and ask grounded questions against them — all running locally through Ollama, no external API keys required.
 
-## Prereqs
+## What it does
+
+- **Ingest** documents (PDF / TXT) with automatic chunking and overlap
+- **Embed** chunks using an Ollama embedding model (default: `nomic-embed-text`)
+- **Retrieve** the top-K most relevant chunks per query via semantic search
+- **Generate** contextual answers from a local chat model through Ollama
+- **Manage** documents through a simple REST API
+
+## Stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Spring Boot 3 (Java 17+) |
+| RAG orchestration | LangChain4j |
+| LLM runtime | Ollama (local, `http://localhost:11434`) |
+| Embeddings | `nomic-embed-text` |
+| Vector store | H2 (file-based at `./data/ragdb`) |
+| Build | Maven |
+
+## Prerequisites
+
 - Java 17+
 - Maven
-- Ollama running locally (default `http://localhost:11434`)
-  - Pull models: `ollama pull llama2` (or `mistral`), `ollama pull nomic-embed-text`
+- [Ollama](https://ollama.ai) running locally
+- Pull the models you want:
+  ```bash
+  ollama pull nomic-embed-text
+  ollama pull llama2        # or mistral, or any chat-capable model
+  ```
 
 ## Run
+
 ```bash
 mvn spring-boot:run
 # or
 mvn clean package && java -jar target/spring-rag-app-0.0.1-SNAPSHOT.jar
 ```
-H2 file DB is at `./data/ragdb` (console at `/h2-console`, user `sa`, password `password`).
 
-## Config
+The app starts on `http://localhost:8080`. H2 file DB is at `./data/ragdb` (console at `/h2-console`, user `sa`, password `password`).
+
+## Configure
+
 Edit `src/main/resources/application.yml`:
+
 - `rag.ollama.base-url`, `rag.ollama.model` (chat), `rag.ollama.embedding-model`
 - Chunking: `rag.chunking.max-tokens`, `rag.chunking.overlap`
 - Retrieval: `rag.top-k`
 
-## REST Endpoints
-- POST `/api/documents` (multipart `file`): ingest PDF/TXT, auto-embeds chunks
-- GET `/api/documents` : list docs
-- GET `/api/documents/{id}` : doc metadata
-- GET `/api/documents/{id}/chunks` : chunks
-- POST `/api/rag/query` (JSON `{question, topK}`) : RAG answer with context
+## REST API
 
-## Sample Requests/Responses
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/documents` | Ingest a PDF or TXT file (multipart `file`) |
+| `GET` | `/api/documents` | List all ingested documents |
+| `GET` | `/api/documents/{id}` | Document metadata |
+| `GET` | `/api/documents/{id}/chunks` | View the chunks for a document |
+| `POST` | `/api/rag/query` | Ask a question (JSON: `{ "question": "...", "topK": 3 }`) |
 
-### Ingest (multipart)
+### Examples
+
+**Ingest**
 ```bash
 curl -X POST http://localhost:8080/api/documents \
   -F "file=@/path/to/sample.txt"
 ```
-Response:
 ```json
 {
   "documentId": "4b7e93c0-1c9f-4e9f-9b02-2e06d3e6f6c2",
@@ -44,11 +74,10 @@ Response:
 }
 ```
 
-### List documents
+**List documents**
 ```bash
 curl http://localhost:8080/api/documents
 ```
-Response:
 ```json
 [
   {
@@ -64,33 +93,23 @@ Response:
 ]
 ```
 
-### Get chunks for a document
+**Get chunks**
 ```bash
 curl http://localhost:8080/api/documents/4b7e93c0-1c9f-4e9f-9b02-2e06d3e6f6c2/chunks
 ```
-Response:
 ```json
 [
-  {
-    "id": "7d1f7a3e-5bf7-4b71-8a7d-65b42d5f8e93",
-    "chunkIndex": 0,
-    "text": "Chunk text ..."
-  },
-  {
-    "id": "b3e8949f-1e1d-4e62-8bb1-3b5c9a5f2b1e",
-    "chunkIndex": 1,
-    "text": "Chunk text ..."
-  }
+  { "id": "7d1f7a3e-...", "chunkIndex": 0, "text": "Chunk text ..." },
+  { "id": "b3e8949f-...", "chunkIndex": 1, "text": "Chunk text ..." }
 ]
 ```
 
-### RAG query
+**RAG query**
 ```bash
 curl -X POST http://localhost:8080/api/rag/query \
   -H "Content-Type: application/json" \
   -d '{"question":"What does the sample document say?","topK":3}'
 ```
-Response:
 ```json
 {
   "question": "What does the sample document say?",
@@ -102,14 +121,36 @@ Response:
 }
 ```
 
-## Quick HTTP Tests (IntelliJ HTTP Client)
-Use `src/test/resources/http/rag-api.http` and run requests against `http://localhost:8080`.
-1) Ingest sample text
-2) List docs, capture `id`
-3) Get chunks
-4) POST RAG query
+## Quick HTTP tests
 
-## Notes / Troubleshooting
-- Ensure Ollama server is up and the embedding model exists (`ollama list`).
-- If H2 lock issues, stop the app and delete `data/` locally (DB will re-init). The folder is gitignored.
-- Logs set to warn for SQL; enable debug with `--debug` if needed.
+Use `src/test/resources/http/rag-api.http` with the IntelliJ HTTP Client (or any `.http` runner) to exercise the full flow:
+
+1. Ingest sample text
+2. List docs and capture an `id`
+3. Get chunks
+4. POST a RAG query
+
+## Project structure
+
+```
+src/
+├── main/
+│   ├── java/       # Controllers, services, RAG pipeline
+│   └── resources/  # application.yml
+└── test/
+data/               # Local H2 vector store (gitignored)
+```
+
+## Troubleshooting
+
+- Make sure Ollama is running and the embedding model is pulled (`ollama list`).
+- H2 lock errors: stop the app and delete `./data/` — the DB will re-init on next run.
+- SQL logs are set to `warn` by default; run with `--debug` to see more.
+
+## Why this exists
+
+A minimal, fully local reference for wiring up RAG in a Spring ecosystem — useful for prototyping before committing to a managed vector DB or a hosted LLM provider.
+
+## License
+
+MIT
